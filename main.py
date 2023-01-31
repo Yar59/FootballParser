@@ -1,6 +1,4 @@
-import numpy
-from time import sleep
-from pprint import pprint
+import os
 
 import pandas
 from environs import Env
@@ -14,7 +12,8 @@ def main():
     env = Env()
     env.read_env()
     chromedriver_path = env('CHROME_DRIVER_PATH')
-    output_file_path = env('OUTPUT_FILE_PATH')
+
+    os.makedirs('matches', exist_ok=True)
 
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
@@ -24,28 +23,29 @@ def main():
     link = 'https://www.flashscore.com.ua/'
     browser.get(link)
     with open('classnames.txt', 'r') as file:
-        class_names = file.read()
+        class_names = file.read().split('\n')
 
-    class_content = browser.find_elements(By.CLASS_NAME, class_names)
-    table_content = [element.text.splitlines() for element in class_content]
-    pprint(table_content)
+    for number, class_name in enumerate(class_names):
+        class_content = browser.find_elements(By.CLASS_NAME, class_name)
+        table_content = [element.text.splitlines() for element in class_content]
 
-    dataframe = pandas.DataFrame(
-        table_content,
-        columns=[
-            'status',
-            'first_team',
-            'second_team',
-            'goals_one',
-            'goals_two',
-            'not_used',
-            'not_used',
-            'not_used',
-        ]
-    ).drop(['not_used', ], axis=1)
+        dataframe = pandas.DataFrame(
+            table_content,
+            columns=[
+                'status',
+                'first_team',
+                'second_team',
+                'goals_one',
+                'goals_two',
+                'not_used',
+                'not_used',
+                'not_used',
+            ]
+        ).drop(['not_used', ], axis=1)
+        dataframe = dataframe.query("status == 'Завершен'")
 
-    dataframe = dataframe.query("status == 'Завершен'")
-    dataframe.to_excel(output_file_path, index=False)
+        output_file_path = os.path.join('matches', f'{number}matches.xlsx')
+        dataframe.to_excel(output_file_path, index=False)
 
 
 if __name__ == '__main__':
